@@ -1,6 +1,5 @@
 // src/pages/Login/LoginPage.tsx
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   loginWithIdentifier,
   loginWithProvider,
@@ -9,50 +8,93 @@ import {
 import type { AuthProvider } from "../../types";
 import "./LoginPage.css";
 
-interface LoginPageProps {
-  onSuccess: () => void;
-}
-
-const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
-  const navigate = useNavigate();
-  const [identifier, setIdentifier] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+const LoginPage: React.FC = () => {
+  const [identifier,      setIdentifier]      = useState("");
+  const [error,           setError]           = useState<string | null>(null);
+  const [isLoading,       setIsLoading]       = useState(false);
   const [loadingProvider, setLoadingProvider] = useState<AuthProvider | "email" | null>(null);
+  const [otpSentTo,       setOtpSentTo]       = useState<string | null>(null);
 
+  // ── OTP confirmation screen ────────────────────────────
+  if (otpSentTo) {
+    return (
+      <div className="login-page">
+        <main className="login-main">
+          <div className="login-card">
+            <div className="login-header">
+              <div className="login-avatar-icon">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none">
+                  <path d="M4 4h16v12H4z" stroke="#1a1a1a" strokeWidth="1.8" strokeLinejoin="round" />
+                  <path d="M4 4l8 8 8-8" stroke="#1a1a1a" strokeWidth="1.8" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <h1 className="login-title">Check your inbox</h1>
+            </div>
+
+            <p style={{ textAlign: "center", color: "#555", marginBottom: "1.5rem", lineHeight: 1.5 }}>
+              We sent a sign-in link to<br />
+              <strong>{otpSentTo}</strong>
+            </p>
+
+            <button
+              className="btn-continue"
+              disabled={isLoading}
+              onClick={async () => {
+                setIsLoading(true);
+                setLoadingProvider("email");
+                await loginWithIdentifier({ identifier: otpSentTo });
+                setIsLoading(false);
+                setLoadingProvider(null);
+              }}
+            >
+              {loadingProvider === "email" ? <span className="btn-spinner" /> : "Resend link"}
+            </button>
+
+            <button
+              className="trouble-link"
+              style={{ marginTop: "0.75rem" }}
+              onClick={() => { setOtpSentTo(null); setError(null); }}
+            >
+              Use a different email
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // ── Main login screen ──────────────────────────────────
   const handleContinue = async () => {
     const validationError = validateIdentifier(identifier);
-    if (validationError) {
-      setError(validationError);
-      return;
-    }
+    if (validationError) { setError(validationError); return; }
+
     setError(null);
     setIsLoading(true);
     setLoadingProvider("email");
+
     const result = await loginWithIdentifier({ identifier });
+
     setIsLoading(false);
     setLoadingProvider(null);
+
     if (!result.success) {
       setError(result.error ?? "Ocurrió un error. Intenta nuevamente.");
-    } else {
-      console.log("Logged in:", result.user);
-      onSuccess();
-      navigate("/");
+    } else if (result.otpSent) {
+      setOtpSentTo(identifier);
     }
   };
 
   const handleProviderLogin = async (provider: AuthProvider) => {
     setIsLoading(true);
     setLoadingProvider(provider);
+
     const result = await loginWithProvider(provider);
-    setIsLoading(false);
-    setLoadingProvider(null);
+
+    // OAuth redirects away immediately on success — only reset state on error
     if (!result.success) {
+      setIsLoading(false);
+      setLoadingProvider(null);
       setError(result.error ?? "Error al iniciar sesión.");
-    } else {
-      console.log("OAuth login:", result.user);
-      onSuccess();
-      navigate("/");
     }
   };
 
@@ -110,7 +152,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
             </button>
           </div>
 
-          <button className="trouble-link">Trouble to signing in?</button>
+          <button className="trouble-link">Trouble signing in?</button>
         </div>
         <p className="login-legal">
           By continuing, you agree to our <a href="/terms" className="legal-link">Terms of Use</a> and authorize
@@ -121,7 +163,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSuccess }) => {
   );
 };
 
-// ======================= ÍCONOS =======================
+// ── Icons ──────────────────────────────────────────────
 const GoogleIcon: React.FC = () => (
   <svg width="22" height="22" viewBox="0 0 24 24">
     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />

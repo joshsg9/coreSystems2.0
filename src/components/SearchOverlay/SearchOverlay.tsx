@@ -1,11 +1,11 @@
 // src/components/SearchOverlay/SearchOverlay.tsx
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   getPopularSearches,
   getRecommendedProducts,
   searchProducts,
   formatPrice,
-type SearchProduct,
+  type SearchProduct,
 } from '../../services/searchService';
 import styles from './SearchOverlay.module.css';
 
@@ -22,50 +22,41 @@ const StarRating: React.FC<{ rating: number; count: number }> = ({ rating, count
   return (
     <span className={styles.stars}>
       {Array.from({ length: 5 }, (_, i) => (
-        <span
-          key={i}
-          className={`${styles.star} ${
-            i < full ? styles.starFull : i === full && half ? styles.starHalf : styles.starEmpty
-          }`}
-        >
-          ★
-        </span>
+        <span key={i} className={`${styles.star} ${i < full ? styles.starFull : i === full && half ? styles.starHalf : styles.starEmpty}`}>★</span>
       ))}
       <span className={styles.reviewCount}>({count})</span>
     </span>
   );
 };
 
-const SearchOverlay: React.FC<SearchOverlayProps> = ({
-  query,
-  onClose,
-  onTagClick,
-  onProductClick,
-}) => {
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const popular = getPopularSearches();
-  const products: SearchProduct[] = query.trim()
-    ? searchProducts(query)
-    : getRecommendedProducts();
-
+const SearchOverlay: React.FC<SearchOverlayProps> = ({ query, onClose, onTagClick, onProductClick }) => {
+  const overlayRef  = useRef<HTMLDivElement>(null);
+  const popular     = getPopularSearches();
   const isSearching = query.trim().length > 0;
 
-  // Close on outside click
+  const [products, setProducts] = useState<SearchProduct[]>([]);
+
+  // Debounced async search
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      const results = isSearching
+        ? await searchProducts(query)
+        : await getRecommendedProducts();
+      setProducts(results);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [query, isSearching]);
+
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (overlayRef.current && !overlayRef.current.contains(e.target as Node)) {
-        onClose();
-      }
+      if (overlayRef.current && !overlayRef.current.contains(e.target as Node)) onClose();
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
   }, [onClose]);
 
-  // Close on Escape
   useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
   }, [onClose]);
@@ -75,59 +66,34 @@ const SearchOverlay: React.FC<SearchOverlayProps> = ({
       <div className={styles.backdrop} onClick={onClose} />
       <div className={styles.overlay} ref={overlayRef}>
         <div className={styles.panel}>
-
-          {/* Left: Popular searches */}
           <div className={styles.left}>
-            <p className={styles.sectionLabel}>
-              {isSearching ? 'Suggestions' : 'the most searched'}
-            </p>
+            <p className={styles.sectionLabel}>{isSearching ? 'Suggestions' : 'the most searched'}</p>
             <div className={styles.tagsGrid}>
               {isSearching
-                ? // Show search-related suggestions
-                  popular
-                    .filter(t => t.toLowerCase().includes(query.toLowerCase()))
-                    .slice(0, 8)
-                    .concat(popular.slice(0, 4))
-                    .slice(0, 8)
+                ? popular.filter(t => t.toLowerCase().includes(query.toLowerCase())).slice(0, 8).concat(popular.slice(0, 4)).slice(0, 8)
                     .map(tag => (
-                      <button
-                        key={tag}
-                        className={styles.tag}
-                        onClick={() => onTagClick(tag)}
-                      >
+                      <button key={tag} className={styles.tag} onClick={() => onTagClick(tag)}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={styles.tagIcon}>
-                          <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
                         </svg>
                         {tag}
                       </button>
                     ))
                 : popular.map(tag => (
-                    <button
-                      key={tag}
-                      className={styles.tag}
-                      onClick={() => onTagClick(tag)}
-                    >
-                      {tag}
-                    </button>
-                  ))}
+                    <button key={tag} className={styles.tag} onClick={() => onTagClick(tag)}>{tag}</button>
+                  ))
+              }
             </div>
           </div>
 
-          {/* Divider */}
           <div className={styles.divider} />
 
-          {/* Right: Recommended / Results */}
           <div className={styles.right}>
-            <p className={styles.sectionLabel}>
-              {isSearching
-                ? `Results for "${query}"`
-                : 'Recommended products'}
-            </p>
-
+            <p className={styles.sectionLabel}>{isSearching ? `Results for "${query}"` : 'Recommended products'}</p>
             {products.length === 0 ? (
               <div className={styles.noResults}>
                 <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                  <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+                  <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
                 </svg>
                 <p>No products found for "{query}"</p>
               </div>
@@ -141,17 +107,12 @@ const SearchOverlay: React.FC<SearchOverlayProps> = ({
                     style={{ animationDelay: `${i * 50}ms` }}
                   >
                     <div className={styles.productImageWrap}>
-                      {product.badge && (
-                        <span className={styles.productBadge}>{product.badge}</span>
-                      )}
+                      {product.badge && <span className={styles.productBadge}>{product.badge}</span>}
                       <img
                         src={product.image}
                         alt={product.name}
                         className={styles.productImage}
-                        onError={e => {
-                          (e.target as HTMLImageElement).src =
-                            'https://via.placeholder.com/60x60?text=?';
-                        }}
+                        onError={e => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/60x60?text=?'; }}
                       />
                     </div>
                     <div className={styles.productInfo}>
@@ -159,16 +120,8 @@ const SearchOverlay: React.FC<SearchOverlayProps> = ({
                       <StarRating rating={product.rating} count={product.reviewCount} />
                       <p className={styles.productPrice}>{formatPrice(product.price)}</p>
                     </div>
-                    <svg
-                      className={styles.productArrow}
-                      width="16"
-                      height="16"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path d="m9 18 6-6-6-6" />
+                    <svg className={styles.productArrow} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m9 18 6-6-6-6"/>
                     </svg>
                   </button>
                 ))}

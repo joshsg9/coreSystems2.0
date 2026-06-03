@@ -1,22 +1,69 @@
 // src/services/productService.ts
-import productsData from '../data/products.json';
-import { type Product } from '../types';
+import { supabase } from '../lib/supabase';
+import type { Product } from '../types';
 
-const products: Product[] = productsData as Product[];
+type Row = Record<string, unknown>;
 
-export const getAllProducts = (): Product[] => products;
+export function mapProductRow(row: Row): Product {
+  return {
+    id:              row.id              as string,
+    name:            row.name            as string,
+    slug:            row.slug            as string | undefined,
+    brand:           row.brand           as string,
+    price:           row.price           as number,
+    originalPrice:   row.original_price  as number | undefined,
+    image:           (row.image_url      as string) ?? '',
+    category:        row.category        as string,
+    subcategory:     row.subcategory     as string | undefined,
+    rating:          (row.rating         as number) ?? 0,
+    reviewCount:     (row.review_count   as number) ?? 0,
+    stock:           (row.stock          as number) ?? 0,
+    isTrending:      (row.is_trending    as boolean) ?? false,
+    isOnSale:        (row.is_on_sale     as boolean) ?? false,
+    discount:        (row.discount_percent as number) ?? 0,
+    discountPercent: (row.discount_percent as number) ?? 0,
+    color:           row.color           as string | undefined,
+    specs:           (row.specs          as Product['specs']) ?? {},
+    badges:          (row.badges         as string[]) ?? [],
+    description:     row.description     as string | undefined,
+  };
+}
 
-export const getProductsByCategory = (category: string): Product[] =>
-  products.filter(p => p.category === category);
+export async function getAllProducts(): Promise<Product[]> {
+  const { data } = await supabase.from('products').select('*');
+  return (data ?? []).map(mapProductRow);
+}
 
-export const getSaleProducts = (): Product[] =>
-  products.filter(p => p.isOnSale);
+export async function getSaleProducts(): Promise<Product[]> {
+  const { data } = await supabase
+    .from('products').select('*').eq('is_on_sale', true);
+  return (data ?? []).map(mapProductRow);
+}
 
-export const getTrendingProducts = (): Product[] =>
-  products.slice(0, 6);
+export async function getTrendingProducts(): Promise<Product[]> {
+  const { data } = await supabase
+    .from('products').select('*').eq('is_trending', true).limit(6);
+  return (data ?? []).map(mapProductRow);
+}
 
-export const getProductById = (id: number): Product | undefined =>
-  products.find(p => p.id === id);
+export async function getProductBySlugOrId(slugOrId: string): Promise<Product | null> {
+  const { data: bySlug } = await supabase
+    .from('products').select('*').eq('slug', slugOrId).maybeSingle();
+  if (bySlug) return mapProductRow(bySlug);
+
+  const { data: byId } = await supabase
+    .from('products').select('*').eq('id', slugOrId).maybeSingle();
+  return byId ? mapProductRow(byId) : null;
+}
+
+export async function getRelatedProducts(category: string, excludeId: string): Promise<Product[]> {
+  const { data } = await supabase
+    .from('products').select('*')
+    .eq('category', category)
+    .neq('id', excludeId)
+    .limit(4);
+  return (data ?? []).map(mapProductRow);
+}
 
 export const formatPrice = (price: number): string =>
   `$ ${price.toLocaleString('es-CO')}`;

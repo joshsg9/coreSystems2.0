@@ -3,8 +3,8 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { searchProductsFull } from '../../services/searchService';
 import { useCart } from '../../context/CartContext';
-import { useFavorites } from '../../context/FavoritesContext'; // ← importación de favoritos
-import type { Product, SearchFilters, SortOption } from '../../types';
+import { useFavorites } from '../../context/FavoritesContext';
+import type { Product, SearchFilters, SortOption, SearchResult } from '../../types';
 import styles from './SearchResultsPage.module.css';
 
 // ─── ProductCard ──────────────────────────────────────────────────────────────
@@ -192,10 +192,12 @@ const SearchResultsPage: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [query, brand, category, sortBy, minPrice, maxPrice, colorsParam]);
 
-  const { products, total, filters: agg } = useMemo(
-    () => searchProductsFull(filters),
-    [filters]
-  );
+  const [searchResult, setSearchResult] = useState<SearchResult>({
+    products: [], total: 0,
+    filters: { brands: [], colors: [], priceRanges: [] },
+  });
+  useEffect(() => { searchProductsFull(filters).then(setSearchResult); }, [filters]);
+  const { products, total, filters: agg } = searchResult;
 
   const setParam = useCallback((key: string, value: string | null) => {
     setSearchParams(prev => {

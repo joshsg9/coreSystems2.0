@@ -8,6 +8,7 @@ import CartDrawer from '../CartDrawer/CartDrawer';
 import FavoritesDrawer from '../FavoritesDrawer/FavoritesDrawer';
 import { useCart } from '../../context/CartContext';
 import { useFavorites } from '../../context/FavoritesContext';
+import { useUser } from '../../hooks/useUser';
 import type { SearchProduct } from '../../services/searchService';
 import styles from './Navbar.module.css';
 
@@ -20,6 +21,7 @@ const Navbar: React.FC<NavbarProps> = ({ onLogoClick }) => {
   const categories = getAllCategories();
   const { totalItems, toggleCart } = useCart();
   const { totalFavorites, toggleDrawer: toggleFavorites } = useFavorites();
+  const { user } = useUser();
 
   const [searchValue, setSearchValue] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -131,10 +133,14 @@ const Navbar: React.FC<NavbarProps> = ({ onLogoClick }) => {
               className={styles.iconBtn}
               aria-label="Seller Account"
               onClick={() => navigate('/seller/register')}
+              style={{ overflow: 'hidden', borderRadius: '50%', padding: user?.avatarUrl ? 0 : undefined }}
             >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-              </svg>
+              {user?.avatarUrl
+                ? <img src={user.avatarUrl} alt="avatar" style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
+                : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                  </svg>
+              }
             </button>
 
             {/* Carrito */}

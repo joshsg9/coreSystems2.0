@@ -1,11 +1,11 @@
 // src/pages/SellerHome/SellerHome.tsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import sellerData from '../../data/sellerData.json';
 import SellerChatWidget from '../../components/SellerChatWidget/SellerChatWidget';
+import { useUser } from '../../hooks/useUser';
+import { uploadAvatar } from '../../services/storageService';
+import { supabase } from '../../lib/supabase';
 import styles from './SellerHome.module.css';
-
-const { username, storeName } = sellerData.seller;
 
 const NAV_ITEMS = ['Dashboard', 'Products', 'Orders', 'Analytics', 'Customers', 'Promotions', 'Settings'];
 
@@ -32,9 +32,42 @@ const TIPS = [
 
 const SellerHome: React.FC = () => {
   const navigate = useNavigate();
-  const [activeNav, setActiveNav] = useState('Dashboard');
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const { user, updateAvatar } = useUser();
+  const username  = user?.name      ?? 'Seller';
+  const [storeName,  setStoreName]  = useState('My Store');
+  const [activeNav,  setActiveNav]  = useState('Dashboard');
+  const [avatarUrl,  setAvatarUrl]  = useState<string | null>(null);
+  const [uploading,  setUploading]  = useState(false);
+  const scrollRef   = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load avatar and store name from Supabase
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from('profiles').select('avatar_url').eq('id', user.id).single()
+      .then(({ data }) => { if (data?.avatar_url) setAvatarUrl(data.avatar_url); });
+    supabase.from('sellers').select('store_name').eq('id', user.id).single()
+      .then(({ data }) => { if (data?.store_name) setStoreName(data.store_name); });
+  }, [user?.id]);
+
   const scrollRight = () => scrollRef.current?.scrollBy({ left: 260, behavior: 'smooth' });
+
+  const handleAvatarClick = () => fileInputRef.current?.click();
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+    setUploading(true);
+    const url = await uploadAvatar(file, user.id);
+    if (url) {
+      // Save to profiles table
+      await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id);
+      setAvatarUrl(url);
+      updateAvatar(url); // sync Navbar
+    }
+    setUploading(false);
+    e.target.value = ''; // reset input
+  };
 
   return (
     <div className={styles.page}>
@@ -69,7 +102,18 @@ const SellerHome: React.FC = () => {
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
             </button>
-            <div className={styles.avatarBtn}>{username.charAt(0).toUpperCase()}</div>
+            <div
+              className={styles.avatarBtn}
+              onClick={handleAvatarClick}
+              title={uploading ? 'Uploading…' : 'Click to change photo'}
+              style={{ cursor: 'pointer', overflow: 'hidden', padding: avatarUrl ? 0 : undefined, opacity: uploading ? 0.6 : 1 }}
+            >
+              {avatarUrl
+                ? <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', display: 'block' }} />
+                : username.charAt(0).toUpperCase()
+              }
+            </div>
+            <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleAvatarChange} />
           </nav>
         </div>
 

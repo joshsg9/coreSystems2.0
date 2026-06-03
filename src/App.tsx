@@ -1,5 +1,5 @@
 // src/App.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { CartProvider }      from './context/CartContext';
 import { FavoritesProvider } from './context/FavoritesContext';
@@ -11,6 +11,7 @@ import ProductDetailPage     from './pages/ProductDetailPage/ProductDetailPage';
 import SellerRegister        from './pages/SellerRegister/SellerRegister';
 import SellerHome            from './pages/SellerHome/SellerHome';
 import Navbar                from './components/Navbar/Navbar';
+import { supabase }          from './lib/supabase';
 
 const AppLayout: React.FC = () => (
   <>
@@ -27,21 +28,40 @@ const AppLayout: React.FC = () => (
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authLoading, setAuthLoading]         = useState(true);
+
+  useEffect(() => {
+    // Restore session on first load (reads from localStorage)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAuthenticated(!!session);
+      setAuthLoading(false);
+    });
+
+    // Keep auth state in sync (magic links, OAuth redirects, token refresh, sign out)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+      setAuthLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (authLoading) return null;
 
   return (
     <BrowserRouter>
       <CartProvider>
         <FavoritesProvider>
-          <ChatProvider>          {/* ← ahora envuelve TODO incluyendo SellerHome */}
+          <ChatProvider>
             <Routes>
-              {/* SellerHome: standalone (sin Navbar de comprador) pero SÍ con ChatProvider */}
+              {/* SellerHome: standalone (no buyer Navbar) */}
               <Route path="/seller/home" element={<SellerHome />} />
 
               <Route
                 path="*"
                 element={
                   !isAuthenticated
-                    ? <LoginPage onSuccess={() => setIsAuthenticated(true)} />
+                    ? <LoginPage />
                     : <AppLayout />
                 }
               />
