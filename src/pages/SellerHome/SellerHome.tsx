@@ -3,6 +3,7 @@ import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import sellerData from '../../data/sellerData.json';
 import SellerChatWidget from '../../components/SellerChatWidget/SellerChatWidget';
+import AddProductModal from '../../components/AddProductModal/AddProductModal';
 import styles from './SellerHome.module.css';
 
 const { username, storeName } = sellerData.seller;
@@ -33,6 +34,7 @@ const TIPS = [
 const SellerHome: React.FC = () => {
   const navigate = useNavigate();
   const [activeNav, setActiveNav] = useState('Dashboard');
+  const [showAddProduct, setShowAddProduct] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollRight = () => scrollRef.current?.scrollBy({ left: 260, behavior: 'smooth' });
 
@@ -79,7 +81,7 @@ const SellerHome: React.FC = () => {
               {item}
             </button>
           ))}
-          <button className={styles.newProductBtn}>+ New Product</button>
+          <button className={styles.newProductBtn} onClick={() => setShowAddProduct(true)}>+ New Product</button>
         </nav>
       </header>
 
@@ -89,7 +91,7 @@ const SellerHome: React.FC = () => {
             <h1 className={styles.heroTitle}>Welcome, <span className={styles.heroName}>{username}</span>!</h1>
             <p className={styles.heroSubtitle}>Your store <strong>{storeName}</strong> is live and ready. Start adding products to reach thousands of customers.</p>
             <div className={styles.heroCtas}>
-              <button className={styles.ctaPrimary}>Add Your First Product ›</button>
+              <button className={styles.ctaPrimary} onClick={() => setShowAddProduct(true)}>Add Your First Product ›</button>
               <button className={styles.ctaSecondary}>View Store Guide</button>
             </div>
           </div>
@@ -114,7 +116,12 @@ const SellerHome: React.FC = () => {
           <h2 className={styles.sectionTitle}>Check some of these things out!</h2>
           <div className={styles.featureGrid}>
             {FEATURE_CARDS.map(card => (
-              <div key={card.label} className={styles.featureCard}>
+              <div
+                key={card.label}
+                className={styles.featureCard}
+                onClick={card.label === 'Add Product' ? () => setShowAddProduct(true) : undefined}
+                style={card.label === 'Add Product' ? { cursor: 'pointer' } : undefined}
+              >
                 <p className={styles.featureCardTitle}>{card.label}</p>
                 <div className={styles.featureCardIcon}>{card.icon}</div>
                 <p className={styles.featureCardDesc}>{card.desc}</p>
@@ -163,6 +170,14 @@ const SellerHome: React.FC = () => {
 
       {/* ── Chat widget flotante del vendedor ── */}
       <SellerChatWidget />
+
+      {/* ── Modal para agregar producto ── */}
+      {showAddProduct && (
+        <AddProductModal
+          onClose={() => setShowAddProduct(false)}
+          onSuccess={() => setShowAddProduct(false)}
+        />
+      )}
 
     </div>
   );

@@ -5,7 +5,6 @@ import styles from './SellerRegister.module.css';
 
 const SellerRegister: React.FC = () => {
   const navigate = useNavigate();
-  const [step, setStep] = useState<'register' | 'success'>('register');
   const [formData, setFormData] = useState({
     username: '',
     email: '',

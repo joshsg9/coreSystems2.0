@@ -1,5 +1,5 @@
 // src/context/ChatContext.tsx
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback } from 'react';
 
 export type SenderRole = 'buyer' | 'seller';
 
