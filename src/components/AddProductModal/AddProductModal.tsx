@@ -51,7 +51,7 @@ const AddProductModal: React.FC<Props> = ({ onClose, onSuccess }) => {
         brand:     brand.trim(),
         price:     Number(price),
         category,
-        image_url: imageUrl,
+        image:     imageUrl,
       })
 
       if (error) throw new Error(error.message)
